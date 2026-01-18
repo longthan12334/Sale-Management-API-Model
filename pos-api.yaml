@@ -1,0 +1,816 @@
+
+openapi: 3.0.0
+info:
+  title: Warehouse Management API
+  version: 1.1.0
+  description: |
+    API quản lý hàng hóa, người dùng, đối tác, tồn kho, hóa đơn.
+    Bổ sung tính năng VIP Member (đăng ký, voucher VIP, sự kiện VIP) và cập nhật thanh toán giảm giá.
+servers:
+  - url: http://localhost:3000
+tags:
+  - name: Authentication
+    description: API đăng ký và đăng nhập
+  - name: Products Management
+    description: Quản lý sản phẩm
+  - name: User Management
+    description: API quản lý thông tin người dùng
+  - name: Cart Management
+    description: API quản lý giỏ hàng
+  - name: Invoices
+    description: API quản lý hóa đơn
+  - name: Partner Management
+    description: API quản lý đối tác
+  - name: Stocks Management
+    description: API quản lý tồn kho
+  - name: Reports
+    description: API báo cáo doanh thu, sản phẩm, khách hàng
+  - name: VIP 
+    description: Tính năng thành viên VIP (đăng ký, voucher, sự kiện)
+paths:
+  /register:
+    post:
+      tags: [Authentication]
+      summary: Đăng ký tài khoản mới
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+                role: { type: string }
+                name: { type: string }
+                phone: { type: string }
+                gmail: { type: string }
+      responses:
+        "201": { description: Đăng ký thành công }
+        "400": { description: Tài khoản đã tồn tại }
+  /login:
+    post:
+      tags: [Authentication]
+      summary: Đăng nhập
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        "200": { description: Đăng nhập thành công }
+        "401": { description: Sai tài khoản hoặc mật khẩu }
+
+  # ============ PRODUCTS ============
+
+  /products:
+    get:
+      tags: [Products Management]
+      summary: Lấy danh sách sản phẩm
+      responses:
+        "200":
+          description: Danh sách sản phẩm
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProductLite'
+  /apply/products:
+    post:
+      tags: [Products Management]
+      summary: Thêm sản phẩm (nhân viên)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreateInput'
+      responses:
+        "201": { description: Đã thêm sản phẩm }
+        "400": { description: Thiếu thông tin sản phẩm }
+  /products/{code}:
+    get:
+      tags: [Products Management]
+      summary: Xem chi tiết sản phẩm theo code
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Chi tiết sản phẩm }
+        "404": { description: Không tìm thấy sản phẩm }
+    put:
+      tags: [Products Management]
+      summary: Sửa sản phẩm (nhân viên)
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductUpdateInput'
+      responses:
+        "200": { description: Sản phẩm đã được cập nhật }
+        "404": { description: Không tìm thấy sản phẩm }
+    delete:
+      tags: [Products Management]
+      summary: Xoá sản phẩm (nhân viên)
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Sản phẩm đã bị xoá }
+        "404": { description: Không tìm thấy sản phẩm }
+  /products/search:
+    get:
+      tags: [Products Management]
+      summary: Tìm kiếm sản phẩm
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+          description: Từ khóa tìm kiếm (tên hoặc mã)
+      responses:
+        "200": { description: Danh sách sản phẩm phù hợp }
+        "400": { description: Thiếu từ khóa tìm kiếm }
+        "404": { description: Không tìm thấy sản phẩm phù hợp }
+
+  # ============ USERS ============
+  /api/users/{username}:
+    put:
+      tags: [User Management]
+      summary: Cập nhật thông tin người dùng
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdateInput'
+      responses:
+        "200": { description: Đã cập nhật thông tin người dùng }
+        "404": { description: Không tìm thấy người dùng }
+  /api/users:
+    get:
+      tags: [User Management]
+      summary: Lấy danh sách tất cả người dùng
+      responses:
+        "200": { description: Danh sách người dùng }
+  /api/users/search:
+    get:
+      tags: [User Management]
+      summary: Tìm kiếm người dùng
+      parameters:
+        - name: name
+          in: query
+          schema: { type: string }
+        - name: phone
+          in: query
+          schema: { type: string }
+        - name: gmail
+          in: query
+          schema: { type: string }
+      responses:
+        "200": { description: Danh sách người dùng phù hợp }
+        "404": { description: Không tìm thấy người dùng }
+  /api/users/delete:
+    delete:
+      tags: [User Management]
+      summary: Xoá người dùng
+      parameters:
+        - name: username
+          in: query
+          required: false
+          schema: { type: string }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username: { type: string }
+      responses:
+        "200": { description: Đã xoá người dùng }
+        "400": { description: Thiếu username để xoá }
+        "404": { description: Không tìm thấy người dùng }
+
+  # ============ CART & CHECKOUT ============
+  /cart:
+    get:
+      tags: [Cart Management]
+      summary: Xem giỏ hàng (người dùng)
+      responses:
+        "200": { description: Danh sách sản phẩm trong giỏ }
+    post:
+      tags: [Cart Management]
+      summary: Thêm sản phẩm vào giỏ hàng
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name: { type: string }
+                price: { type: number }
+                quantity: { type: integer }
+      responses:
+        "201": { description: Đã thêm sản phẩm vào giỏ hàng }
+        "400": { description: Thiếu thông tin sản phẩm }
+    delete:
+      tags: [Cart Management]
+      summary: Xoá sản phẩm khỏi giỏ hàng theo tên
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  description: Tên sản phẩm cần xoá
+      responses:
+        "200": { description: Đã xoá sản phẩm khỏi giỏ hàng }
+        "400": { description: Thiếu tên sản phẩm }
+        "404": { description: Không tìm thấy sản phẩm trong giỏ hàng }
+  /order-item:
+    post:
+      tags: [Cart Management]
+      summary: Tạo đơn & thêm món (quét mã vạch hoặc chọn món)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                productCode: { type: string }
+                quantity: { type: integer }
+                note: { type: string }
+      responses:
+        "200": { description: Đã thêm vào giỏ hàng }
+        "400": { description: Tồn kho không đủ hoặc giá bằng 0 }
+        "404": { description: Mã vạch không tồn tại }
+  /checkout:
+    post:
+      tags: [Cart Management]
+      summary: Thanh toán (có tính giảm giá VIP/voucher)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CheckoutInput'
+      responses:
+        "200":
+          description: Thanh toán thành công
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutResponse'
+
+  # ============ INVOICES ============
+  /invoices/in:
+    post:
+      tags: [Invoices]
+      summary: Tạo hóa đơn nhập
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceInput'
+      responses:
+        "201": { description: Đã tạo hóa đơn nhập }
+        "400": { description: Thiếu ngày xuất hóa đơn }
+  /invoices/out:
+    post:
+      tags: [Invoices]
+      summary: Tạo hóa đơn xuất
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceInput'
+      responses:
+        "201": { description: Đã tạo hóa đơn xuất }
+        "400": { description: Thiếu ngày xuất hóa đơn }
+  /invoices:
+    get:
+      tags: [Invoices]
+      summary: Lấy danh sách tất cả hóa đơn
+      responses:
+        "200": { description: Danh sách hóa đơn }
+  /invoices/{id}:
+    get:
+      tags: [Invoices]
+      summary: Lấy thông tin hóa đơn theo ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Thông tin hóa đơn }
+        "404": { description: Không tìm thấy hóa đơn }
+    put:
+      tags: [Invoices]
+      summary: Cập nhật thông tin hóa đơn
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvoiceUpdateInput'
+      responses:
+        "200": { description: Đã cập nhật hóa đơn }
+        "404": { description: Không tìm thấy hóa đơn }
+    delete:
+      tags: [Invoices]
+      summary: Xóa hóa đơn
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Đã xóa hóa đơn }
+        "404": { description: Không tìm thấy hóa đơn }
+  /invoices/type/{type}:
+    get:
+      tags: [Invoices]
+      summary: Lấy danh sách hóa đơn theo loại
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Danh sách hóa đơn theo loại }
+  /invoices/partner/{partnerId}:
+    get:
+      tags: [Invoices]
+      summary: Lấy danh sách hóa đơn theo đối tác
+      parameters:
+        - name: partnerId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Danh sách hóa đơn theo đối tác }
+  /invoices/{id}/approve:
+    post:
+      tags: [Invoices]
+      summary: Phê duyệt hóa đơn
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Đã phê duyệt hóa đơn }
+        "404": { description: Không tìm thấy hóa đơn }
+  /invoices/{id}/cancel:
+    post:
+      tags: [Invoices]
+      summary: Hủy hóa đơn
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Đã hủy hóa đơn }
+        "404": { description: Không tìm thấy hóa đơn }
+  /invoices/{id}/receive:
+    post:
+      tags: [Invoices]
+      summary: Xác nhận hàng về cho toàn bộ hóa đơn
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Đã xác nhận hàng về }
+        "404": { description: Không tìm thấy hóa đơn }
+  /invoices/items/{itemId}/status:
+    post:
+      tags: [Invoices]
+      summary: Cập nhật trạng thái từng sản phẩm trong hóa đơn
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status: { type: string }
+      responses:
+        "200": { description: Đã cập nhật trạng thái sản phẩm }
+        "404": { description: Không tìm thấy sản phẩm }
+  /invoices/items/{itemId}/receive:
+    post:
+      tags: [Invoices]
+      summary: Xác nhận hàng về cho từng sản phẩm trong hóa đơn
+      parameters:
+        - name: itemId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200": { description: Đã xác nhận hàng về cho sản phẩm }
+        "404": { description: Không tìm thấy sản phẩm }
+
+  # ============ PARTNERS ============
+  /api/partners:
+    post:
+      tags: [Partner Management]
+      summary: Tạo đối tác mới
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PartnerInput'
+      responses:
+        "201": { description: Đã tạo đối tác }
+        "400": { description: Thiếu thông tin đối tác }
+    get:
+      tags: [Partner Management]
+      summary: Lấy danh sách tất cả đối tác
+      responses:
+        "200":
+          description: Danh sách đối tác
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Partner'
+  /api/partners/{id}:
+    get:
+      tags: [Partner Management]
+      summary: Lấy thông tin đối tác theo ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Thông tin đối tác
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Partner'
+        "404": { description: Không tìm thấy đối tác }
+    delete:
+      tags: [Partner Management]
+      summary: Xoá đối tác
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200": { description: Đã xoá đối tác }
+        "404": { description: Không tìm thấy đối tác }
+  /api/partners/type/{type}:
+    get:
+      tags: [Partner Management]
+      summary: Lấy danh sách đối tác theo loại
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Danh sách đối tác theo loại
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Partner'
+
+  # ============ STOCKS ============
+  /api/stocks:
+    get:
+      tags: [Stocks Management]
+      summary: Lấy tồn kho tất cả sản phẩm
+      responses:
+        "200":
+          description: Danh sách tồn kho
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Stock'
+  /api/stocks/product/{productId}:
+    get:
+      tags: [Stocks Management]
+      summary: Lấy tồn kho theo sản phẩm
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Thông tin tồn kho sản phẩm
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stock'
+        "404": { description: Không tìm thấy sản phẩm }
+  /api/stocks/report:
+    get:
+      tags: [Stocks Management]
+      summary: Báo cáo tình trạng sản phẩm
+      description: Phân loại sản phẩm theo số lượng tồn kho, hạn sử dụng và độ ưa chuộng
+      responses:
+        "200":
+          description: Báo cáo tình trạng sản phẩm
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StockReport'
+
+  # ============ VIP (NEW) ============
+  /vip/subscribe:
+    post:
+      tags: [VIP]
+      summary: Đăng ký VIP (giả lập thanh toán)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VipSubscribeInput'
+      responses:
+        "200": { description: Đăng ký VIP thành công }
+        "404": { description: Không tìm thấy người dùng }
+  /vip/status/{username}:
+    get:
+      tags: [VIP]
+      summary: Trạng thái VIP người dùng
+      parameters:
+        - name: username
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Trạng thái VIP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VipStatusResponse'
+        "404": { description: Không tìm thấy người dùng }
+  /vip/vouchers:
+    get:
+      tags: [VIP]
+      summary: Liệt kê voucher VIP còn hạn
+      responses:
+        "200":
+          description: Danh sách voucher VIP
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Voucher'
+  /vip/voucher/apply:
+    post:
+      tags: [VIP]
+      summary: Kiểm tra áp dụng voucher
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoucherApplyInput'
+      responses:
+        "200": { description: Voucher hợp lệ }
+        "403": { description: Voucher chỉ dành cho VIP }
+        "404": { description: Không tìm thấy người dùng/voucher }
+
+components:
+  schemas:
+    # ---------- Products ----------
+    ProductLite:
+      type: object
+      properties:
+        name: { type: string }
+        code: { type: string }
+        quantity: { type: integer }
+        price: { type: number }
+    ProductCreateInput:
+      type: object
+      required: [name, code, quantity, price]
+      properties:
+        name: { type: string }
+        code: { type: string }
+        quantity: { type: integer }
+        price: { type: number }
+    ProductUpdateInput:
+      type: object
+      properties:
+        name: { type: string }
+        quantity: { type: integer }
+        price: { type: number }
+
+    # ---------- Users ----------
+    UserUpdateInput:
+      type: object
+      properties:
+        name: { type: string }
+        dob: { type: string, format: date }
+        phone: { type: string }
+        gmail: { type: string }
+
+    # ---------- Cart ----------
+    CheckoutInput:
+      type: object
+      required: [username]
+      properties:
+        username: { type: string }
+        voucherCode: { type: string }
+    CheckoutResponse:
+      type: object
+      properties:
+        message: { type: string }
+        order:
+          type: object
+          properties:
+            id: { type: integer }
+            items:
+              type: array
+              items:
+                type: object
+                properties:
+                  name: { type: string }
+                  price: { type: number }
+                  quantity: { type: integer }
+                  subtotal: { type: number }
+            subtotal: { type: number }
+            discounts:
+              type: object
+              properties:
+                vipDiscount: { type: number }
+                voucherPercentDiscount: { type: number }
+                voucherAmountDiscount: { type: number }
+            appliedVoucher:
+              $ref: '#/components/schemas/Voucher'
+            total: { type: number }
+            createdAt: { type: string, format: date-time }
+
+    # ---------- Invoices ----------
+    InvoiceItem:
+      type: object
+      properties:
+        itemId: { type: string }
+        name: { type: string }
+        quantity: { type: integer }
+        price: { type: number }
+        status: { type: string }
+        received: { type: boolean }
+    InvoiceInput:
+      type: object
+      required: [partnerId, items, date]
+      properties:
+        partnerId: { type: string }
+        date: { type: string, format: date }
+        items:
+          type: array
+          items:
+            type: object
+            properties:
+              itemId: { type: string }
+              name: { type: string }
+              quantity: { type: integer }
+              price: { type: number }
+    InvoiceUpdateInput:
+      type: object
+      properties:
+        partnerId: { type: string }
+        date: { type: string, format: date }
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/InvoiceItem'
+        type: { type: string }
+
+    # ---------- Partners ----------
+    PartnerInput:
+      type: object
+      required: [name, email, phone, address, type]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string }
+        address: { type: string }
+        type: { type: integer }
+    Partner:
+      type: object
+      required: [id, name, email, phone, address, type]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string }
+        phone: { type: string }
+        address: { type: string }
+        type: { type: integer }
+
+    # ---------- Stocks ----------
+    Stock:
+      type: object
+      required: [productId, name, quantity]
+      properties:
+        productId: { type: string }
+        name: { type: string }
+        quantity: { type: integer }
+    StockReport:
+      type: object
+      properties:
+        productId: { type: string }
+        name: { type: string }
+        quantity: { type: integer }
+        expiryDate: { type: string, format: date }
+        soldCount: { type: integer }
+        status:
+          type: array
+          items: { type: string }
+
+    # ---------- VIP ----------
+    VipSubscribeInput:
+      type: object
+      required: [username]
+      properties:
+        username: { type: string }
+        tier:
+          type: string
+          enum: [basic, premium]
+          default: basic
+        months:
+          type: integer
+          default: 1
+    VipStatusResponse:
+      type: object
+      properties:
+        isVIP: { type: boolean }
+        vipStartAt: { type: string, format: date-time }
+        vipEndAt: { type: string, format: date-time }
+        vipTier: { type: string }
+        daysLeft: { type: integer }
+    Voucher:
+      type: object
+      properties:
+        code: { type: string }
+        type:
+          type: string
+          enum: [percent, amount]
+        value: { type: number }
+        isVIPOnly: { type: boolean }
+        expiresAt: { type: string, format: date }
+    VoucherApplyInput:
+      type: object
+      required: [username, code]
+      properties:
+        username: { type: string }
+        code: { type: string }
